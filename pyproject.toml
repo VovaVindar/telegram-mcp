@@ -1,0 +1,11 @@
+[project]
+name = "telegram-mcp"
+version = "0.1.0"
+description = "Lightweight Telegram MCP server for Claude Code"
+requires-python = ">=3.10"
+dependencies = [
+    "telethon>=1.38",
+    "fastmcp>=2.0",
+    "python-dotenv>=1.0",
+    "qrcode>=7.0",
+]

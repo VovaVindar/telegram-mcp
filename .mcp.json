@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "telegram-mcp": {
+      "command": ".venv/bin/fastmcp",
+      "args": ["run", "telegram_mcp_server.py"]
+    }
+  }
+}
