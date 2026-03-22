@@ -27,6 +27,13 @@ Single-file server (`telegram_mcp_server.py`) using FastMCP + Telethon.
 - `edit_message(chat_id, message_id, new_text)` — edit a message
 - `delete_messages(chat_id, message_ids)` — delete messages
 - `forward_messages(from_chat_id, to_chat_id, message_ids)` — forward messages
+- `archive_chat(chat_id)` — archive a chat
+- `unarchive_chat(chat_id)` — unarchive a chat
+- `pin_message(chat_id, message_id)` — pin a message
+- `unpin_message(chat_id, message_id)` — unpin a message
+- `mark_read(chat_id)` — mark all messages as read
+- `mute_chat(chat_id, hours)` — mute a chat (omit hours for forever)
+- `unmute_chat(chat_id)` — unmute a chat
 
 ## Key Details
 

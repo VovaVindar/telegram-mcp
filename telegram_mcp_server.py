@@ -1,5 +1,7 @@
 import os
 import logging
+import sqlite3
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
 
@@ -7,7 +9,8 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 from pydantic import Field
 from telethon import TelegramClient
-from telethon.tl.types import Channel, Chat, User
+from telethon.tl.functions.account import UpdateNotifySettingsRequest
+from telethon.tl.types import Channel, Chat, InputPeerNotifySettings, User
 
 # Load .env from the same directory as this script
 load_dotenv(Path(__file__).parent / ".env")
@@ -20,6 +23,14 @@ API_HASH = os.environ["TELEGRAM_API_HASH"]
 SESSION_PATH = str(Path(__file__).parent / "telegram")
 
 mcp = FastMCP("Telegram")
+
+# Set WAL mode on the session database to prevent stale journal locks
+_session_db = SESSION_PATH + ".session"
+if Path(_session_db).exists():
+    with sqlite3.connect(_session_db) as _conn:
+        _conn.execute("PRAGMA journal_mode=WAL")
+    del _conn
+
 tg = TelegramClient(SESSION_PATH, API_ID, API_HASH)
 
 
@@ -231,6 +242,122 @@ async def forward_messages(
     if not isinstance(msgs, list):
         msgs = [msgs]
     return [_format_message(msg) for msg in msgs]
+
+
+@mcp.tool()
+async def archive_chat(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+) -> dict:
+    """Archive a chat."""
+    await ensure_connected()
+    entity = await tg.get_input_entity("me" if chat_id == "me" else int(chat_id))
+    await tg.edit_folder(entity, folder=1)
+    return {"archived": True, "chat_id": chat_id}
+
+
+@mcp.tool()
+async def unarchive_chat(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+) -> dict:
+    """Unarchive a chat."""
+    await ensure_connected()
+    entity = await tg.get_input_entity("me" if chat_id == "me" else int(chat_id))
+    await tg.edit_folder(entity, folder=0)
+    return {"archived": False, "chat_id": chat_id}
+
+
+@mcp.tool()
+async def pin_message(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+    message_id: Annotated[int, Field(description="ID of the message to pin")],
+) -> dict:
+    """Pin a message in a chat."""
+    await ensure_connected()
+    entity = await tg.get_input_entity("me" if chat_id == "me" else int(chat_id))
+    await tg.pin_message(entity, message_id)
+    return {"pinned": True, "message_id": message_id}
+
+
+@mcp.tool()
+async def unpin_message(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+    message_id: Annotated[int, Field(description="ID of the message to unpin")],
+) -> dict:
+    """Unpin a message in a chat."""
+    await ensure_connected()
+    entity = await tg.get_input_entity("me" if chat_id == "me" else int(chat_id))
+    await tg.unpin_message(entity, message_id)
+    return {"unpinned": True, "message_id": message_id}
+
+
+@mcp.tool()
+async def mark_read(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+) -> dict:
+    """Mark all messages in a chat as read."""
+    await ensure_connected()
+    entity = await tg.get_input_entity("me" if chat_id == "me" else int(chat_id))
+    await tg.send_read_acknowledge(entity)
+    return {"marked_read": True, "chat_id": chat_id}
+
+
+@mcp.tool()
+async def mute_chat(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+    hours: Annotated[
+        float | None,
+        Field(description="Hours to mute for, or omit to mute forever"),
+    ] = None,
+) -> dict:
+    """Mute notifications for a chat. Omit hours to mute forever."""
+    await ensure_connected()
+    entity = await tg.get_input_entity("me" if chat_id == "me" else int(chat_id))
+    if hours is not None:
+        mute_until = datetime.now(timezone.utc) + timedelta(hours=hours)
+    else:
+        mute_until = datetime(2038, 1, 1, tzinfo=timezone.utc)
+    await tg(UpdateNotifySettingsRequest(
+        peer=entity,
+        settings=InputPeerNotifySettings(mute_until=mute_until),
+    ))
+    return {"muted": True, "chat_id": chat_id}
+
+
+@mcp.tool()
+async def unmute_chat(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+) -> dict:
+    """Unmute notifications for a chat."""
+    await ensure_connected()
+    entity = await tg.get_input_entity("me" if chat_id == "me" else int(chat_id))
+    await tg(UpdateNotifySettingsRequest(
+        peer=entity,
+        settings=InputPeerNotifySettings(
+            mute_until=datetime(1970, 1, 1, tzinfo=timezone.utc)
+        ),
+    ))
+    return {"muted": False, "chat_id": chat_id}
 
 
 async def _qr_login():
