@@ -157,6 +157,82 @@ async def get_chat_info(
     return info
 
 
+@mcp.tool()
+async def send_message(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+    text: Annotated[str, Field(description="Message text to send")],
+    reply_to_msg_id: Annotated[
+        int | None,
+        Field(description="Message ID to reply to"),
+    ] = None,
+) -> dict:
+    """Send a text message to a chat, channel, or saved messages."""
+    await ensure_connected()
+    target = "me" if chat_id == "me" else int(chat_id)
+    msg = await tg.send_message(target, text, reply_to=reply_to_msg_id)
+    return _format_message(msg)
+
+
+@mcp.tool()
+async def edit_message(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+    message_id: Annotated[int, Field(description="ID of the message to edit")],
+    new_text: Annotated[str, Field(description="New text for the message")],
+) -> dict:
+    """Edit the text of an existing message."""
+    await ensure_connected()
+    target = "me" if chat_id == "me" else int(chat_id)
+    msg = await tg.edit_message(target, message_id, text=new_text)
+    return _format_message(msg)
+
+
+@mcp.tool()
+async def delete_messages(
+    chat_id: Annotated[
+        str,
+        Field(description="Chat ID (number) or 'me' for saved messages"),
+    ],
+    message_ids: Annotated[
+        list[int], Field(description="List of message IDs to delete")
+    ],
+) -> dict:
+    """Delete one or more messages from a chat."""
+    await ensure_connected()
+    target = "me" if chat_id == "me" else int(chat_id)
+    affected = await tg.delete_messages(target, message_ids)
+    return {"deleted_count": len(affected)}
+
+
+@mcp.tool()
+async def forward_messages(
+    from_chat_id: Annotated[
+        str,
+        Field(description="Source chat ID (number) or 'me' for saved messages"),
+    ],
+    to_chat_id: Annotated[
+        str,
+        Field(description="Destination chat ID (number) or 'me' for saved messages"),
+    ],
+    message_ids: Annotated[
+        list[int], Field(description="List of message IDs to forward")
+    ],
+) -> list[dict]:
+    """Forward messages from one chat to another."""
+    await ensure_connected()
+    from_target = "me" if from_chat_id == "me" else int(from_chat_id)
+    to_target = "me" if to_chat_id == "me" else int(to_chat_id)
+    msgs = await tg.forward_messages(to_target, message_ids, from_target)
+    if not isinstance(msgs, list):
+        msgs = [msgs]
+    return [_format_message(msg) for msg in msgs]
+
+
 async def _qr_login():
     """Authenticate via QR code — scan with your phone's Telegram app."""
     import asyncio

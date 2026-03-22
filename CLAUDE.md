@@ -1,6 +1,6 @@
 # Telegram MCP Server
 
-Lightweight MCP server that gives Claude Code read access to Telegram via Telethon.
+Lightweight MCP server that gives Claude Code read and write access to Telegram via Telethon.
 
 ## Setup
 
@@ -23,10 +23,13 @@ Single-file server (`telegram_mcp_server.py`) using FastMCP + Telethon.
 - `get_messages(chat_id, limit, offset_id)` — fetch messages (use `"me"` for saved messages)
 - `search_messages(query, chat_id, limit)` — search by text
 - `get_chat_info(chat_id)` — get chat/user details
+- `send_message(chat_id, text, reply_to_msg_id)` — send a message
+- `edit_message(chat_id, message_id, new_text)` — edit a message
+- `delete_messages(chat_id, message_ids)` — delete messages
+- `forward_messages(from_chat_id, to_chat_id, message_ids)` — forward messages
 
 ## Key Details
 
 - `chat_id="me"` targets Saved Messages
 - Paginate with `offset_id` (pass last message ID from previous batch)
-- All tools are read-only; write operations are planned for future phases
 - Telethon is archived (Feb 2026) but functional; monitor for alternatives
