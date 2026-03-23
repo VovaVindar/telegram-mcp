@@ -10,7 +10,12 @@ from fastmcp import FastMCP
 from pydantic import Field
 from telethon import TelegramClient
 from telethon.tl.functions.account import UpdateNotifySettingsRequest
-from telethon.tl.types import Channel, Chat, InputPeerNotifySettings, User
+from telethon.tl.functions.messages import (
+    GetDialogFiltersRequest,
+    UpdateDialogFilterRequest,
+)
+from telethon.tl.types import Channel, Chat, DialogFilter, InputPeerNotifySettings, TextWithEntities, User
+from telethon.utils import get_peer_id
 
 # Load .env from the same directory as this script
 load_dotenv(Path(__file__).parent / ".env")
@@ -358,6 +363,118 @@ async def unmute_chat(
         ),
     ))
     return {"muted": False, "chat_id": chat_id}
+
+
+@mcp.tool()
+async def list_folders() -> list[dict]:
+    """List all chat folders."""
+    await ensure_connected()
+    result = await tg(GetDialogFiltersRequest())
+    folders = []
+    for f in result.filters:
+        if not isinstance(f, DialogFilter):
+            continue
+        folders.append({
+            "id": f.id,
+            "title": f.title.text if isinstance(f.title, TextWithEntities) else f.title,
+            "include_peers": [get_peer_id(p) for p in f.include_peers],
+            "exclude_peers": [get_peer_id(p) for p in f.exclude_peers],
+            "pinned_peers": [get_peer_id(p) for p in f.pinned_peers],
+            "contacts": f.contacts,
+            "non_contacts": f.non_contacts,
+            "groups": f.groups,
+            "broadcasts": f.broadcasts,
+            "bots": f.bots,
+        })
+    return folders
+
+
+@mcp.tool()
+async def create_folder(
+    name: Annotated[str, Field(description="Name for the new folder")],
+    chat_ids: Annotated[
+        list[str],
+        Field(description="List of chat IDs to include in the folder"),
+    ],
+) -> dict:
+    """Create a new chat folder with the specified chats."""
+    await ensure_connected()
+    result = await tg(GetDialogFiltersRequest())
+    existing_ids = [
+        f.id for f in result.filters if isinstance(f, DialogFilter)
+    ]
+    new_id = max(existing_ids) + 1 if existing_ids else 2
+    peers = []
+    for cid in chat_ids:
+        entity = await tg.get_input_entity("me" if cid == "me" else int(cid))
+        peers.append(entity)
+    dialog_filter = DialogFilter(
+        id=new_id,
+        title=TextWithEntities(text=name, entities=[]),
+        include_peers=peers,
+        exclude_peers=[],
+        pinned_peers=[],
+    )
+    await tg(UpdateDialogFilterRequest(id=new_id, filter=dialog_filter))
+    return {"created": True, "folder_id": new_id, "name": name, "chat_count": len(chat_ids)}
+
+
+@mcp.tool()
+async def update_folder(
+    folder_id: Annotated[int, Field(description="ID of the folder to update")],
+    name: Annotated[
+        str | None,
+        Field(description="New name for the folder"),
+    ] = None,
+    add_chat_ids: Annotated[
+        list[str] | None,
+        Field(description="Chat IDs to add to the folder"),
+    ] = None,
+    remove_chat_ids: Annotated[
+        list[str] | None,
+        Field(description="Chat IDs to remove from the folder"),
+    ] = None,
+) -> dict:
+    """Update an existing folder — rename or modify its chats."""
+    await ensure_connected()
+    result = await tg(GetDialogFiltersRequest())
+    folder = None
+    for f in result.filters:
+        if isinstance(f, DialogFilter) and f.id == folder_id:
+            folder = f
+            break
+    if folder is None:
+        raise ValueError(f"Folder with ID {folder_id} not found")
+    if name is not None:
+        folder.title = TextWithEntities(text=name, entities=[])
+    if add_chat_ids:
+        existing_peer_ids = {get_peer_id(p) for p in folder.include_peers}
+        for cid in add_chat_ids:
+            entity = await tg.get_input_entity("me" if cid == "me" else int(cid))
+            if get_peer_id(entity) not in existing_peer_ids:
+                folder.include_peers.append(entity)
+    if remove_chat_ids:
+        remove_ids = set()
+        for cid in remove_chat_ids:
+            entity = await tg.get_input_entity("me" if cid == "me" else int(cid))
+            remove_ids.add(get_peer_id(entity))
+        folder.include_peers = [
+            p for p in folder.include_peers if get_peer_id(p) not in remove_ids
+        ]
+    await tg(UpdateDialogFilterRequest(id=folder_id, filter=folder))
+    return {"updated": True, "folder_id": folder_id}
+
+
+@mcp.tool()
+async def delete_folder(
+    folder_id: Annotated[int, Field(description="ID of the folder to delete")],
+) -> dict:
+    """Delete a chat folder."""
+    await ensure_connected()
+    await tg(UpdateDialogFilterRequest(id=folder_id, filter=DialogFilter(
+        id=folder_id, title=TextWithEntities(text="", entities=[]), include_peers=[]
+    )))
+    return {"deleted": True, "folder_id": folder_id}
 
 
 async def _qr_login():

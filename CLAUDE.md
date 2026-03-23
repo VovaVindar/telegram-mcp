@@ -34,9 +34,18 @@ Single-file server (`telegram_mcp_server.py`) using FastMCP + Telethon.
 - `mark_read(chat_id)` — mark all messages as read
 - `mute_chat(chat_id, hours)` — mute a chat (omit hours for forever)
 - `unmute_chat(chat_id)` — unmute a chat
+- `list_folders()` — list all chat folders
+- `create_folder(name, chat_ids)` — create a new folder with chats
+- `update_folder(folder_id, name, add_chat_ids, remove_chat_ids)` — rename or modify folder chats
+- `delete_folder(folder_id)` — delete a folder
 
 ## Key Details
 
 - `chat_id="me"` targets Saved Messages
 - Paginate with `offset_id` (pass last message ID from previous batch)
 - Telethon is archived (Feb 2026) but functional; monitor for alternatives
+- Telegram folder names have a **12-character limit** — keep names short
+- `DialogFilter.title` requires `TextWithEntities(text=name, entities=[])` in Telethon 1.42+ (TL layer change from plain string)
+- `get_chat_info` does not return `member_count` or `about`/description for most channels (only available to admins)
+- No `leave_chat`/unsubscribe tool exists — users must leave channels manually
+- When creating multiple folders, do it **sequentially** — parallel calls to `create_folder` will compute the same `new_id` and collide
