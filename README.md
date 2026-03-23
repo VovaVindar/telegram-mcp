@@ -6,27 +6,20 @@ Read messages, send replies, and organize your Telegram: auto-categorize channel
 
 ## What can it do?
 
-**Organize (the interesting part)**
-- Analyze your channel subscriptions and suggest folder groupings
-- Auto-create themed folders based on channel content
-- Identify inactive or high-unread channels worth unsubscribing from
-- Bulk mute, archive, or mark-read across chats
-- See [AGENTS.md](AGENTS.md) for full AI workflow examples
+**Read** - list chats/channels/groups, fetch and search messages, get chat details
 
-**Read**
-- List chats, channels, and groups (with filters)
-- Fetch and search messages
-- Get chat/user details
+**Write** - send, edit, delete, and forward messages, pin/unpin, mark as read
 
-**Write**
-- Send, edit, delete, and forward messages
-- Pin/unpin messages
-- Mark chats as read
+**Organize** - archive/unarchive, mute/unmute, create and manage chat folders
 
-**Manage**
-- Archive/unarchive chats
-- Mute/unmute chats (timed or permanent)
-- Create, update, and delete chat folders
+## AI Workflows
+
+The tools are designed to work together for multi-step organization tasks. [AGENTS.md](AGENTS.md) includes ready-to-use workflows:
+
+- **Auto-organize channels into folders** - fetch all channels, sample recent messages to infer topics, group into themed folders
+- **Identify cleanup candidates** - find inactive or high-unread channels, suggest archive/mute/unsubscribe
+- **Triage unread messages** - summarize what's important across chats, bulk mark-read the rest
+- **Reorganize existing folders** - audit folder structure, find uncategorized chats, restructure
 
 ## Setup
 

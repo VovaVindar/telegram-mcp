@@ -89,11 +89,25 @@ Audit and restructure existing folder organization.
 - `mute_chat(chat_id, hours)` / `unmute_chat(chat_id)` - omit `hours` to mute permanently
 - `list_folders()` / `create_folder(name, chat_ids)` / `update_folder(folder_id, name, add_chat_ids, remove_chat_ids)` / `delete_folder(folder_id)`
 
+## Architecture
+
+Single-file server (`telegram_mcp_server.py`) using FastMCP + Telethon.
+
+- `ensure_connected()` lazy-connects and checks auth on every tool call
+- Session file (`telegram.session`) stores auth state, created during interactive login
+- `.env` holds API credentials (`TELEGRAM_API_ID`, `TELEGRAM_API_HASH`), loaded via python-dotenv
+
 ## Important Notes
 
+**When using the tools:**
 - Always present a plan and ask for user confirmation before making changes.
-- Create folders sequentially, never in parallel.
+- Create folders sequentially, never in parallel (they all read existing IDs at call time, so parallel calls compute the same `new_id` and collide).
 - Folder names max 12 characters.
 - No `leave_chat` tool exists. Users must manually unsubscribe from channels.
 - Use parallel agent calls when fetching info for many channels (batch into groups of 10-15).
 - `get_chat_info` may not return `member_count` or `about` for channels where the user is not an admin.
+
+**When editing the code:**
+- Telethon is archived (Feb 2026) but functional; monitor for alternatives.
+- `DialogFilter.title` requires `TextWithEntities(text=name, entities=[])` in Telethon 1.42+ (TL layer changed it from plain string).
+- Telethon 1.42 uses `messages.DialogFilters` (with a `filters` attribute) for `GetDialogFiltersRequest` results. The list contains both `DialogFilter` and `DialogFilterDefault` objects, so always filter with `isinstance(f, DialogFilter)`.
