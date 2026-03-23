@@ -2,7 +2,7 @@
 name = "telegram-mcp"
 version = "0.1.0"
 description = "Lightweight Telegram MCP server for Claude Code"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<4"
 dependencies = [
     "telethon>=1.38",
     "fastmcp>=2.0",
